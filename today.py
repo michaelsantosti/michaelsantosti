@@ -299,36 +299,41 @@ def stars_counter(data):
 
 def svg_overwrite(filename, age_data, commit_data, star_data, repo_data, contrib_data, follower_data, loc_data):
     """
-    Parse SVG files and update elements with my age, commits, stars, repositories, and lines written
+    Parse SVG files and update elements with my age, commits, stars, repositories, and lines written.
+    Justification lengths for star_data and the LOC line are computed dynamically so that every
+    line in the GitHub Stats section always adds up to 60 visible characters, regardless of how
+    many digits each value has (values without their own dot separator would otherwise shift the line).
     """
     tree = etree.parse(filename)
     root = tree.getroot()
+    contrib_str = '{:,}'.format(contrib_data)
+    loc_del_len = max(len(loc_data[1]), 5)
     justify_format(root, 'age_data', age_data, 49)
     justify_format(root, 'commit_data', commit_data, 23)
+    # repo_data length shifts with Contributed so the '|' separator lands on the
+    # same column (37) as the one in the Commits/Followers line below it
     justify_format(root, 'star_data', star_data, 14)
-    justify_format(root, 'repo_data', repo_data, 6)
+    justify_format(root, 'repo_data', repo_data, 9 - len(contrib_str))
     justify_format(root, 'contrib_data', contrib_data)
     justify_format(root, 'follower_data', follower_data, 10)
-    justify_format(root, 'loc_data', loc_data[2], 9)
+    justify_format(root, 'loc_data', loc_data[2], 19 - len(loc_data[0]) - loc_del_len)
     justify_format(root, 'loc_add', loc_data[0])
-    justify_format(root, 'loc_del', loc_data[1], 7)
+    justify_format(root, 'loc_del', loc_data[1], loc_del_len)
     tree.write(filename, encoding='utf-8', xml_declaration=True)
 
 
 def justify_format(root, element_id, new_text, length=0):
     """
-    Updates and formats the text of the element, and modifes the amount of dots in the previous element to justify the new text on the svg
+    Updates the element's text and pads the preceding dot separator so that the
+    visible block (separator + value) always spans exactly `length` + 2 characters.
+    This keeps the right edge of every line aligned no matter how the value grows.
     """
     if isinstance(new_text, int):
         new_text = f"{'{:,}'.format(new_text)}"
     new_text = str(new_text)
     find_and_replace(root, element_id, new_text)
     just_len = max(0, length - len(new_text))
-    if just_len <= 2:
-        dot_map = {0: '', 1: ' ', 2: '. '}
-        dot_string = dot_map[just_len]
-    else:
-        dot_string = ' ' + ('.' * just_len) + ' '
+    dot_string = ' ' + ('.' * just_len) + ' ' if just_len else '  '
     find_and_replace(root, f"{element_id}_dots", dot_string)
 
 
@@ -421,7 +426,7 @@ def formatter(query_type, difference, funct_return=False, whitespace=0):
 
 if __name__ == '__main__':
     """
-    Michael Santosti (michaelsantosti) - adaptado de Andrew Grant (Andrew6rant), 2022-2025
+    Michael Santosti (michaelsantosti) - adapted from Andrew Grant (Andrew6rant), 2022-2025
     """
     print('Calculation times:')
     # define global variable for owner ID and calculate user's creation date
