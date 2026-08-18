@@ -221,6 +221,7 @@ def cache_builder(edges, comment_size, force_cache, loc_add=0, loc_del=0):
     If it has, run recursive_loc on that repository to update the LOC count
     """
     cached = True # Assume all repositories are cached
+    edges = [edge for edge in edges if edge['node'] is not None] # drop repositories inaccessible to the token (null nodes)
     filename = 'cache/'+hashlib.sha256(USER_NAME.encode('utf-8')).hexdigest()+'.txt' # Create a unique filename for each user
     try:
         with open(filename, 'r') as f:
@@ -293,7 +294,9 @@ def stars_counter(data):
     Count total stars in repositories owned by me
     """
     total_stars = 0
-    for node in data: total_stars += node['node']['stargazers']['totalCount']
+    for node in data:
+        if node['node'] is not None: # repositories inaccessible to the token (e.g. blocked) come back as null nodes
+            total_stars += node['node']['stargazers']['totalCount']
     return total_stars
 
 
